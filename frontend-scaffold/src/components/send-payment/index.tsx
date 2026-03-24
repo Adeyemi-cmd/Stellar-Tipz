@@ -12,8 +12,11 @@ import {
 import {
   StellarWalletsKit,
   WalletNetwork,
-  WalletType,
   ISupportedWallet,
+  FreighterModule,
+  AlbedoModule,
+  xBullModule,
+  FREIGHTER_ID,
 } from "@creit.tech/stellar-wallets-kit";
 
 import { stroopToXlm } from "../../helpers/format";
@@ -82,14 +85,14 @@ export const SendPayment = (props: SendPaymentProps) => {
   const [SWKKit] = React.useState(
     new StellarWalletsKit({
       network: selectedNetwork.networkPassphrase as WalletNetwork,
-      selectedWallet: WalletType.FREIGHTER,
+      selectedWalletId: FREIGHTER_ID,
+      modules: [
+        new FreighterModule(),
+        new AlbedoModule(),
+        new xBullModule(),
+      ],
     }),
   );
-
-  // Whenever the selected network changes, set the network on swc
-  React.useEffect(() => {
-    SWKKit.setNetwork(selectedNetwork.networkPassphrase as WalletNetwork);
-  }, [selectedNetwork.networkPassphrase, SWKKit]);
 
   // with a user provided token ID, fetch token details
   async function setToken(id: string) {
@@ -328,19 +331,13 @@ export const SendPayment = (props: SendPaymentProps) => {
           if (!activePubKey) {
             // See https://github.com/Creit-Tech/Stellar-Wallets-Kit/tree/main for more options
             await SWKKit.openModal({
-              allowedWallets: [
-                WalletType.ALBEDO,
-                WalletType.FREIGHTER,
-                WalletType.XBULL,
-              ],
               onWalletSelected: async (option: ISupportedWallet) => {
                 try {
-                  // Set selected wallet,  network, and public key
-                  SWKKit.setWallet(option.type);
-                  const publicKey = await SWKKit.getPublicKey();
+                  // Set selected wallet and get public key
+                  SWKKit.setWallet(option.id);
+                  const { address } = await SWKKit.getAddress();
 
-                  await SWKKit.setNetwork(WalletNetwork.TESTNET);
-                  setActivePubKey(publicKey);
+                  setActivePubKey(address);
                 } catch (error) {
                   console.log(error);
                   setConnectionError(ERRORS.WALLET_CONNECTION_REJECTED);
